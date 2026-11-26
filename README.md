@@ -1,42 +1,52 @@
 # Reproducing Madry et al. (ICLR 2018) on MNIST
 
-CMP4509 term project. We reproduce the central claim of
-*Towards Deep Learning Models Resistant to Adversarial Attacks* (Madry, Makelov, Schmidt, Tsipras, Vladu, ICLR 2018):
-training on PGD adversarial examples, i.e. solving the saddle-point problem
+CMP4509 Deep Learning, Fall 2026 term project.
 
-$$\min_\theta \; \mathbb{E}_{(x,y)}\Big[\max_{\|\delta\|_\infty \le \epsilon} L(\theta, x+\delta, y)\Big],$$
+We reproduce the central MNIST result of *Towards Deep Learning Models Resistant to Adversarial Attacks* (Madry, Makelov, Schmidt, Tsipras, Vladu, ICLR 2018): PGD adversarial training gives high accuracy under ℓ∞ attacks with ε = 0.3, while a normally trained network drops to 0%.
 
-gives MNIST models that remain accurate under strong first-order L∞ attacks with ε = 0.3.
+## Main result (3 seeds, mean ± std)
 
-## Repository
+| Attack | Natural training | PGD training (ours) | Paper (Table 1) |
+|---|---|---|---|
+| none (clean) | 99.09 ± 0.09 | 98.43 ± 0.09 | 98.8 |
+| FGSM | 9.04 ± 1.91 | 93.98 ± 0.24 | 95.6 |
+| PGD-40 | 0.00 | 91.84 ± 0.34 | 93.2 |
+| PGD-100 | 0.00 | 89.60 ± 0.42 | 91.8 |
+| PGD-40, 20 restarts* | 0.00 | 89.47 ± 0.23 | 90.4 |
+| PGD-100, 20 restarts* | 0.00 | 87.83 ± 0.21 | 89.3 |
 
-| File | Content |
+\* first 1000 test images. The claim holds; the 1–2 point gap is consistent with our ~4× shorter training (20 epochs instead of ~83).
+
+## Repository contents
+
+| Path | What it is |
 |---|---|
-| `madry.py` | all code: data, model, FGSM/PGD attacks, training, evaluation (~250 lines) |
-| `notebooks/madry_reproduction.ipynb` | runs every experiment and produces every table and figure of the report |
-
-## How to run
-
-1. Open the notebook in Google Colab (File → Open notebook → GitHub → this repo) or Kaggle (internet on).
-2. Select a GPU runtime (T4).
-3. Set `REPO_URL` in the first code cell to this repository.
-4. Run all cells with `QUICK = True` (~15 min) to test the pipeline, then with `QUICK = False`.
-
-Checkpoints are written after every epoch, and results are saved as JSON files (on Google Drive in Colab).
-Re-running the notebook skips finished work and resumes unfinished training runs, so the experiments
-can be split over several free sessions.
+| `madry.py` | All code: data loading, network (`MadryCNN`), FGSM, PGD with projection, adversarial training with per-epoch checkpoints, evaluation, transfer attack, loss-landscape study |
+| `notebooks/madry_reproduction.ipynb` | Runs every experiment and produces every number and figure in the report |
+| `figures/` | Figures used in the report |
+| `results/` | JSON result files written by the notebook |
 
 ## Experiments
 
-| | Setting | Paper reference |
-|---|---|---|
-| E1 | natural vs. PGD-40 adversarial training, paper architecture, seeds 0–2; clean / FGSM / PGD-40 / PGD-100 / 20-restart / transfer accuracy | Table 1 |
-| E2 | natural, FGSM and PGD training at capacity scales 1, 2, 4, 8, 16 | Sec. 4, Fig. 4 |
-| E3 | distribution of the loss reached by 1000 random-restart PGD runs | Sec. 3, Fig. 1 |
-| E4 | accuracy vs. ε and vs. number of PGD steps (gradient-masking checks) | — |
+- **E1 – Central claim:** natural vs PGD adversarial training, full network (32-64-1024), 20 epochs, 3 seeds; FGSM, PGD-40, PGD-100 and 20-restart evaluation.
+- **E2 – Capacity:** {natural, FGSM, PGD} training × network scale {1, 2, 4, 8, 16} × 3 seeds (45 models, 5 epochs each).
+- **E3 – Loss concentration:** 1000 random-start PGD-40 runs on 5 test images.
+- **E4 – Gradient-masking checks:** accuracy vs ε, accuracy vs number of PGD steps, black-box transfer attack.
 
-## Deviations from the paper
+Settings (same as the paper unless noted): ε = 0.3, pixels in [0, 1]; Adam, lr 1e-4, batch 50; training attack PGD-40, step 0.01, random start; final model is used (no checkpoint selection).
 
-* Training budget: 20 epochs (≈ 24k iterations of batch 50) instead of 100k iterations; E2 uses 5 epochs.
-* 20-restart evaluations use the first 1000 test images; single-start attacks use the full test set.
-* Everything else (architecture, Adam lr 1e-4, batch 50, ε = 0.3, PGD-40 with step 0.01 and random start) follows the paper.
+## How to run
+
+1. Open the notebook in Google Colab:
+   https://colab.research.google.com/github/senasagdc/adversarial-attacks-dl-test/blob/main/notebooks/madry_reproduction.ipynb
+2. Select a GPU runtime (Runtime → Change runtime type → T4 GPU).
+3. Run all cells (Runtime → Run all). The notebook mounts Google Drive and writes checkpoints, results and figures to `MyDrive/madry_repro/full/`.
+4. If the session disconnects or the GPU quota runs out, simply run all cells again: finished runs are skipped and unfinished runs resume from their last epoch checkpoint.
+
+Runtime on a free Colab T4: one PGD-training epoch ≈ 76 s, one natural-training epoch ≈ 4 s; one full E1 PGD model ≈ 25 min. The full notebook needs a few hours of GPU time in total and can be spread over several sessions.
+
+Requirements: Python 3 with PyTorch, torchvision, numpy, matplotlib (all preinstalled on Colab).
+
+## Report
+
+The report (LaTeX, course template) describes the method, every change from the paper, all results and their discussion.
